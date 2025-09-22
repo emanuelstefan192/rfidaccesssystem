@@ -1,6 +1,7 @@
 #ifndef WIFICONNECTION_H
 #define WIFICONNECTION_H
-
+#include "esp_event.h"
+#include "esp_log.h"
 #include <stdint.h>
 #include <stdbool.h>
 

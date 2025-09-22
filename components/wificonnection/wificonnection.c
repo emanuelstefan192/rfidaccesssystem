@@ -7,13 +7,13 @@
 #include "esp_event.h"
 #include "esp_log.h"
 #include "nvs_flash.h"
-
 #include "lwip/err.h"
 #include "lwip/sockets.h"
 #include "lwip/sys.h"
 #include "lwip/netdb.h"
 #include "lwip/dns.h"
-
+#include "wificonnection.h"
+#include "cJSON.h"
 /** DEFINES **/
 
 
@@ -154,58 +154,4 @@ esp_err_t connect_wifi()
     vEventGroupDelete(wifi_event_group);
 
     return status;
-}
-
-esp_err_t send_sql_query(const char* server_ip, int port, const char* query, int* response, size_t response_size)
-{
-    struct sockaddr_in serverInfo = { 0 };
-    serverInfo.sin_family = AF_INET;
-    serverInfo.sin_addr.s_addr = inet_addr(server_ip);
-    serverInfo.sin_port = htons(port);
-
-    int sock = socket(AF_INET, SOCK_STREAM, 0);
-    if (sock < 0) {
-        ESP_LOGE(TAG, "Failed to create socket");
-        return ESP_FAIL;
-    }
-
-    if (connect(sock, (struct sockaddr*)&serverInfo, sizeof(serverInfo)) != 0) {
-        ESP_LOGE(TAG, "Failed to connect to server");
-        close(sock);
-        return ESP_FAIL;
-    }
-
-    // Create JSON message with query
-    cJSON* json = cJSON_CreateObject();
-    cJSON* json_query = cJSON_CreateString(query);
-    cJSON_AddItemToObject(json, "query", json_query);
-
-    char* json_string = cJSON_Print(json);
-
-    // Send query length first, then query
-    uint32_t query_len = strlen(json_string);
-    send(sock, &query_len, sizeof(query_len), 0);
-    send(sock, json_string, query_len, 0);
-
-    // Receive response length
-    uint32_t response_len;
-    if (recv(sock, &response_len, sizeof(response_len), 0) <= 0) {
-        ESP_LOGE(TAG, "Failed to receive response length");
-        close(sock);
-        cJSON_Delete(json);
-        free(json_string);
-        return ESP_FAIL;
-    }
-
-    // Receive response data
-    if (response_len < response_size) {
-        int received = recv(sock, response, response_len, 0);
-        response[received] = '\0';
-        ESP_LOGI(TAG, "Query response: %s", response);
-    }
-
-    close(sock);
-    cJSON_Delete(json);
-    free(json_string);
-    return ESP_OK;
 }

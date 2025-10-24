@@ -1,7 +1,7 @@
 {
     "version":            "1.1",
     "project_name":       "esp32card",
-    "project_version":    "2dfd24b-dirty",
+    "project_version":    "7c58787-dirty",
     "project_path":       "C:/Espressif/frameworks/esp-idf-v5.3.1/esp32card",
     "idf_path":           "C:/Espressif/frameworks/esp-idf-v5.3.1",
     "build_dir":          "C:/Espressif/frameworks/esp-idf-v5.3.1/esp32card/build",

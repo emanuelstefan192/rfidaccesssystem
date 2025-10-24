@@ -41,10 +41,8 @@ bool mfrc522_anticollision(uint8_t* uid_out, uint8_t* uid_length);
 #define ControlReg  0x0C 	        // miscellaneous control registers
 #define BitFramingReg  0x0D 	    // adjustments for bit-oriented frames
 #define CollReg  0x0E 	            // bit position of the first bit-collision detected on the RF interface
-//				  0x0F		        // reserved for future use
 
 // Page 1: Command
-// 				  0x10		        // reserved for future use
 #define ModeReg  0x11 	            // defines general modes for transmitting and receiving 
 #define TxModeReg  0x12 	        // defines transmission data rate and framing
 #define RxModeReg  0x13 	        // defines reception data rate and framing
@@ -54,20 +52,14 @@ bool mfrc522_anticollision(uint8_t* uid_out, uint8_t* uid_length);
 #define RxSelReg  0x17 	        // selects internal receiver settings
 #define RxThresholdReg  0x18 	    // selects thresholds for the bit decoder
 #define DemodReg  0x19	            // defines demodulator settings
-// 				    0x1A			// reserved for future use
-// 				    0x1B			// reserved for future use
 #define MfTxReg  0x1C	            // controls some MIFARE communication transmit parameters
 #define MfRxReg  0x1D 	            // controls some MIFARE communication receive parameters
-// 				    0x1E			// reserved for future use
 #define SerialSpeedReg  0x1F	    // selects the speed of the serial UART interface
 
 // Page 2: Configuration
-// 				    0x20			// reserved for future use
 #define CRCResultRegH  0x21 	    // shows the MSB and LSB values of the CRC calculation
 #define CRCResultRegL  0x22 
-// 					0x23			// reserved for future use
 #define ModWidthReg  0x24 	        // controls the ModWidth setting?
-// 				    0x25			// reserved for future use
 #define RFCfgReg  0x26	            // configures the receiver gain
 #define GsNReg  0x27 	            // selects the conductance of the antenna driver pins TX1 and TX2 for modulation 
 #define CWGsPReg  0x28 	        // defines the conductance of the p-driver output during periods of no modulation
@@ -92,8 +84,5 @@ bool mfrc522_anticollision(uint8_t* uid_out, uint8_t* uid_length);
 #define TestDAC1Reg  0x39 	        // defines the test value for TestDAC1
 #define TestDAC2Reg  0x3A 	        // defines the test value for TestDAC2
 #define TestADCReg  0x3B 	        // shows the value of ADC I and Q channels
-// 				    0x3C			// reserved for production tests
-// 				    0x3D			// reserved for production tests
-// 				    0x3E			// reserved for production tests
-// 					0x3F			// reserved for production tests
+
 #endif

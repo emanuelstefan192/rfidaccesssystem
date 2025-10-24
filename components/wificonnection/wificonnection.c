@@ -14,22 +14,31 @@
 #include "lwip/dns.h"
 #include "wificonnection.h"
 #include "cJSON.h"
-/** DEFINES **/
 
-
-/** GLOBALS **/
-
-// event group to contain status information
 static EventGroupHandle_t wifi_event_group;
 
-// retry tracker
 static int s_retry_num = 0;
 
-// task tag
 static const char* TAG = "WIFI";
-/** FUNCTIONS **/
 
-//event handler for wifi events
+
+static void wifi_init(void) {
+    esp_err_t status = WIFI_FAILURE;
+    esp_err_t ret = nvs_flash_init();
+    if (ret == ESP_ERR_NVS_NO_FREE_PAGES || ret == ESP_ERR_NVS_NEW_VERSION_FOUND) {
+        ESP_ERROR_CHECK(nvs_flash_erase());
+        ret = nvs_flash_init();
+    }
+    ESP_ERROR_CHECK(ret);
+
+    status = connect_wifi();
+    if (WIFI_SUCCESS != status)
+    {
+        ESP_LOGI(TAG, "Failed to associate to AP, dying...");
+        return;
+    }
+}
+
 static void wifi_event_handler(void* arg, esp_event_base_t event_base,
     int32_t event_id, void* event_data)
 {
@@ -52,6 +61,38 @@ static void wifi_event_handler(void* arg, esp_event_base_t event_base,
     }
 }
 
+esp_err_t http_get_uid(const char* uid) {
+    char url[128];
+    sprintf(url, "http://192.168.1.139:8000/uid/%s", uid);
+
+    esp_http_client_config_t config = {
+        .url = url,
+        .method = HTTP_METHOD_GET,
+    };
+
+    esp_http_client_handle_t client = esp_http_client_init(&config);
+    esp_err_t err = esp_http_client_perform(client);
+    if (err == ESP_OK) {
+        int status = esp_http_client_get_status_code(client);
+        ESP_LOGI("HTTP", "Status = %d", status);
+
+        if (status == 200) {
+            return ESP_OK;
+        }
+        else {
+            ESP_LOGW("HTTP", "Server returned status %d", status);
+            esp_http_client_cleanup(client);
+            return ESP_FAIL;
+        }
+    }
+    else {
+        ESP_LOGE("HTTP", "HTTP GET failed: %s", esp_err_to_name(err));
+    }
+
+
+    esp_http_client_cleanup(client);
+    return 0;
+}
 //event handler for ip events
 static void ip_event_handler(void* arg, esp_event_base_t event_base,
     int32_t event_id, void* event_data)
@@ -66,26 +107,16 @@ static void ip_event_handler(void* arg, esp_event_base_t event_base,
 
 }
 
-// connect to wifi and return the result
 esp_err_t connect_wifi()
 {
     int status = WIFI_FAILURE;
 
-    /** INITIALIZE ALL THE THINGS **/
-    //initialize the esp network interface
     ESP_ERROR_CHECK(esp_netif_init());
-
-    //initialize default esp event loop
     ESP_ERROR_CHECK(esp_event_loop_create_default());
-
-    //create wifi station in the wifi driver
     esp_netif_create_default_wifi_sta();
-
-    //setup wifi station with the default wifi configuration
     wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
     ESP_ERROR_CHECK(esp_wifi_init(&cfg));
 
-    /** EVENT LOOP CRAZINESS **/
     wifi_event_group = xEventGroupCreate();
 
     esp_event_handler_instance_t wifi_handler_event_instance;
@@ -102,11 +133,11 @@ esp_err_t connect_wifi()
         NULL,
         &got_ip_event_instance));
 
-    /** START THE WIFI DRIVER **/
+    /** WIFI DRIVER CONFIG**/
     wifi_config_t wifi_config = {
         .sta = {
-            .ssid = "DIGI-mJz9",
-            .password = "uHrCuzah3F",
+            .ssid = "", 
+            .password = "",
          .threshold.authmode = WIFI_AUTH_WPA2_PSK,
             .pmf_cfg = {
                 .capable = true,
@@ -115,26 +146,18 @@ esp_err_t connect_wifi()
         },
     };
 
-    // set the wifi controller to be a station
     ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_STA));
-
-    // set the wifi config
     ESP_ERROR_CHECK(esp_wifi_set_config(WIFI_IF_STA, &wifi_config));
-
-    // start the wifi driver
     ESP_ERROR_CHECK(esp_wifi_start());
 
     ESP_LOGI(TAG, "STA initialization complete");
 
-    /** NOW WE WAIT **/
     EventBits_t bits = xEventGroupWaitBits(wifi_event_group,
         WIFI_SUCCESS | WIFI_FAILURE,
         pdFALSE,
         pdFALSE,
         portMAX_DELAY);
 
-    /* xEventGroupWaitBits() returns the bits before the call returned, hence we can test which event actually
-     * happened. */
     if (bits & WIFI_SUCCESS) {
         ESP_LOGI(TAG, "Connected to ap");
         status = WIFI_SUCCESS;
@@ -148,7 +171,6 @@ esp_err_t connect_wifi()
         status = WIFI_FAILURE;
     }
 
-    /* The event will not be processed after unregister */
     ESP_ERROR_CHECK(esp_event_handler_instance_unregister(IP_EVENT, IP_EVENT_STA_GOT_IP, got_ip_event_instance));
     ESP_ERROR_CHECK(esp_event_handler_instance_unregister(WIFI_EVENT, ESP_EVENT_ANY_ID, wifi_handler_event_instance));
     vEventGroupDelete(wifi_event_group);

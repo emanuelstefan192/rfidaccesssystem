@@ -15,8 +15,8 @@ static void wifi_event_handler(void* arg, esp_event_base_t event_base, int32_t e
 static void ip_event_handler(void* arg, esp_event_base_t event_base, int32_t event_id, void* event_data);
 esp_err_t connect_wifi();
 esp_err_t send_sql_query(const char* server_ip, int port, const char* query, char* response, size_t response_size);
-
-
+esp_err_t http_get_uid(const char* uid);
+static void wifi_init(void);
 
 
 #endif

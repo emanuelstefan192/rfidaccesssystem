@@ -41,7 +41,6 @@ static void mfrc522_reset()
     mfrc522_write(CommandReg, PCD_RESETPHASE);
     uint8_t count = 0;
     do {
-        // Wait for the PowerDown bit in CommandReg to be cleared (max 3x50ms)
         vTaskDelay(50);
     } while ((mfrc522_read(CommandReg << 1) & (1 << 4)) && (++count) < 3);
 
@@ -92,7 +91,6 @@ void mfrc522_start(uint8_t cs, uint8_t rst)
     }
 }
 
-// First function: Request/Wake up card and get ATQA
 bool mfrc522_request(uint8_t* atqa_out) {
     mfrc522_write(CommandReg, PCD_IDLE);
     mfrc522_write(ComIrqReg, 0x7F);
@@ -105,7 +103,6 @@ bool mfrc522_request(uint8_t* atqa_out) {
     mfrc522_write(BitFramingReg, 0x87);  // Start transmission
 
     bool completed = false;
-    // Wait for response (max 25ms)
     for (int i = 0; i < 50; i++) {
         uint8_t irq = mfrc522_read(ComIrqReg);
         if (irq & 0x30) {  // RxIRq or IdleIRq triggered
@@ -135,7 +132,7 @@ bool mfrc522_request(uint8_t* atqa_out) {
         return false;
     }
 
-    // Read ATQA (should be 2 bytes)
+    // Read ATQA (Card type)
     atqa_out[0] = mfrc522_read(FIFODataReg);
     atqa_out[1] = mfrc522_read(FIFODataReg);
 
@@ -143,14 +140,12 @@ bool mfrc522_request(uint8_t* atqa_out) {
     return true;
 }
 
-// Second function: Anticollision to get UID
 bool mfrc522_anticollision(uint8_t* uid_out, uint8_t* uid_length) {
     mfrc522_write(CommandReg, PCD_IDLE);
     mfrc522_write(ComIrqReg, 0x7F);
-    mfrc522_write(FIFOLevelReg, 0x80);   // Flush FIFO
+    mfrc522_write(FIFOLevelReg, 0x80);  
     mfrc522_write(ErrorReg, 0x00);
 
-    // Send ANTICOLLISION command
     mfrc522_write(FIFODataReg, PICC_SEL_CL1);  // 0x93
     mfrc522_write(FIFODataReg, 0x20);          // NVB (Number of Valid Bits) = 0x20
 
@@ -159,7 +154,6 @@ bool mfrc522_anticollision(uint8_t* uid_out, uint8_t* uid_length) {
     mfrc522_write(BitFramingReg, 0x80);        // Start transmission
 
     bool completed = false;
-    // Wait for response (max 25ms)
     for (int i = 0; i < 50; i++) {
         uint8_t irq = mfrc522_read(ComIrqReg);
         if (irq & 0x30) {  // RxIRq or IdleIRq triggered
@@ -178,7 +172,7 @@ bool mfrc522_anticollision(uint8_t* uid_out, uint8_t* uid_length) {
     }
 
     uint8_t error = mfrc522_read(ErrorReg);
-    if (error & 0x1B) {  // Check for relevant errors
+    if (error & 0x1B) {  // Check for errors
         printf("Error in anticollision: 0x%02X\n", error);
         return false;
     }
@@ -189,15 +183,12 @@ bool mfrc522_anticollision(uint8_t* uid_out, uint8_t* uid_length) {
         return false;
     }
 
-    // Read UID + BCC (Block Check Character)
-    // Typically: 4 bytes UID + 1 byte BCC = 5 bytes total
     for (uint8_t i = 0; i < len; i++) {
         uid_out[i] = mfrc522_read(FIFODataReg);
     }
 
-    *uid_length = len - 1;  // Exclude BCC from UID length
+    *uid_length = len - 1;  
 
-    // Verify BCC (XOR of UID bytes should equal BCC)
     uint8_t bcc_calc = 0;
     for (uint8_t i = 0; i < *uid_length; i++) {
         bcc_calc ^= uid_out[i];
@@ -206,7 +197,6 @@ bool mfrc522_anticollision(uint8_t* uid_out, uint8_t* uid_length) {
     if (bcc_calc != uid_out[*uid_length]) {
         printf("BCC mismatch! Calculated: 0x%02X, Received: 0x%02X\n",
             bcc_calc, uid_out[*uid_length]);
-        // Don't return false here - sometimes this still works
     }
 
     printf("(BCC: %02X)\n", uid_out[*uid_length]);
@@ -214,33 +204,20 @@ bool mfrc522_anticollision(uint8_t* uid_out, uint8_t* uid_length) {
     return true;
 }
 
-// Combined function to get complete UID
 bool mfrc522_get_uid(uint8_t* uid_out, uint8_t* uid_length) {
     uint8_t atqa[2];
 
-    // Step 1: Wake up card and get ATQA
+    // Wake up card and get ATQA
     if (!mfrc522_request(atqa)) {
         return false;
     }
 
-    // Step 2: Get UID through anticollision
+    // Get UID through anticollision
     if (!mfrc522_anticollision(uid_out, uid_length)) {
         return false;
     }
 
     return true;
 }
-
-// Usage example:
-/*
-uint8_t uid[10];  // Buffer for UID (max 10 bytes for larger UIDs)
-uint8_t uid_length;
-
-if (mfrc522_get_uid(uid, &uid_length)) {
-    printf("Successfully read UID!\n");
-} else {
-    printf("Failed to read UID\n");
-}
-*/
 
 

@@ -15,56 +15,9 @@
 static const char* TAG = "MAIN";
 
 
-esp_err_t http_get_uid(const char* uid) {
-    char url[128];
-    sprintf(url, "http://192.168.1.139:8000/uid/%s", uid);
-
-    esp_http_client_config_t config = {
-        .url = url,
-        .method = HTTP_METHOD_GET,
-    };
-
-    esp_http_client_handle_t client = esp_http_client_init(&config);
-    esp_err_t err = esp_http_client_perform(client);
-    if (err == ESP_OK) {
-        int status = esp_http_client_get_status_code(client);
-        ESP_LOGI("HTTP", "Status = %d", status);
-
-        if (status == 200) {
-            return ESP_OK;
-        }
-        else {
-            ESP_LOGW("HTTP", "Server returned status %d", status);
-            esp_http_client_cleanup(client);
-            return ESP_FAIL;
-        }
-    }
-    else {
-        ESP_LOGE("HTTP", "HTTP GET failed: %s", esp_err_to_name(err));
-    }
-
-
-    esp_http_client_cleanup(client);
-    return 0;
-}
 void app_main(void)
 {
-    esp_err_t status = WIFI_FAILURE;
-
-    //initialize storage
-    esp_err_t ret = nvs_flash_init();
-    if (ret == ESP_ERR_NVS_NO_FREE_PAGES || ret == ESP_ERR_NVS_NEW_VERSION_FOUND) {
-        ESP_ERROR_CHECK(nvs_flash_erase());
-        ret = nvs_flash_init();
-    }
-    ESP_ERROR_CHECK(ret);
-
-    status = connect_wifi();
-    if (WIFI_SUCCESS != status)
-    {
-        ESP_LOGI(TAG, "Failed to associate to AP, dying...");
-        return;
-    }
+    
 
     printf("Initializing RC522 RFID reader...\n");
 
